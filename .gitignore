@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.DS_Store
+.env
+*.log
+*.sqlite3
+apps/backend/dist/
+apps/backend/node_modules/
+apps/backend/dev.sqlite3*
+apps/web/dist/
+apps/web/node_modules/
+packages/*/dist/
+packages/*/node_modules/
