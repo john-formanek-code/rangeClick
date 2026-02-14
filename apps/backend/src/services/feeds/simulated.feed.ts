@@ -23,7 +23,7 @@ export class SimulatedPriceFeed implements PriceFeed {
   subscribe(instrument: Instrument, callback: (tick: MarketTick) => void): void {
     const interval = setInterval(() => {
       // Random walk simulation with slight drift per source
-      const volatility = instrument === Instrument.BTC ? 5 : 0.5;
+      const volatility = instrument === Instrument.BTC ? 10 : 1.0;
       const change = (Math.random() - 0.5) * volatility;
       this.prices[instrument] += change;
       
@@ -35,7 +35,7 @@ export class SimulatedPriceFeed implements PriceFeed {
       };
 
       callback(tick);
-    }, 200 + Math.random() * 100); // Randomize interval slightly
+    }, 500 + Math.random() * 200); // Randomize interval slightly
 
     this.intervals.push(interval);
   }
