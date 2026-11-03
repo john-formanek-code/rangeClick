@@ -166,14 +166,14 @@ server.get('/bets/history', async (req) => {
 
 // New: Dedicated Active Rounds endpoint
 server.get('/rounds/active', async (req) => {
-  const { instrument } = req.query as any;
-  return roundService.getActiveRounds(instrument || 'BTC');
+  const { instrument, tf } = req.query as any;
+  return roundService.getActiveRounds(instrument || 'BTC', tf ? Number(tf) : undefined);
 });
 
 // 3. Get Active Rounds (General)
 server.get('/rounds', async (req) => {
-  const { instrument } = req.query as any;
-  return roundService.getActiveRounds(instrument || 'BTC');
+  const { instrument, tf } = req.query as any;
+  return roundService.getActiveRounds(instrument || 'BTC', tf ? Number(tf) : undefined);
 });
 
 server.get('/rounds/:id/tiles', async (req) => {

@@ -7,7 +7,8 @@ export enum Instrument {
 
 export enum TimeFrame {
   TF_30S = 30,
-  TF_60S = 60
+  TF_60S = 60,
+  TF_300S = 300
 }
 
 export enum RoundStatus {

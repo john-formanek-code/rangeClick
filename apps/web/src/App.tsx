@@ -12,8 +12,8 @@ const CHART_TOP_PAD = 20;      // px top padding inside chart area
 const CHART_BOTTOM_PAD = 20;   // px bottom padding inside chart area
 const FOOTER_HEIGHT = 40;      // px bottom bar
 const TILE_COUNT = 9;          // 9 vertical tiles per column
-const COL_WIDTH = 80;          // px width of each block column
-const COL_GAP = 4;             // px gap between columns
+const COL_WIDTH = 500;         // px width of each block column (5-min worth of travel)
+const COL_GAP = 6;             // px gap between columns
 const SETTLE_FLASH_MS = 2000;  // how long winning column stays visible after settlement
 
 function App() {
@@ -52,7 +52,7 @@ function App() {
 
   useEffect(() => {
     if (price !== null) {
-      setPriceHistory(prev => [...prev.slice(-50), { price, time: Date.now() }]);
+      setPriceHistory(prev => [...prev.slice(-300), { price, time: Date.now() }]);
     }
   }, [price]);
 
@@ -210,10 +210,6 @@ function App() {
           const gridMin = orderedTiles.length ? Number(orderedTiles[orderedTiles.length - 1].min_price) : 0;
           const gridMax = orderedTiles.length ? Number(orderedTiles[0].max_price) : 1;
 
-          // Continuous scroll: X = chartRight + (timeLeft_seconds) * scrollSpeed
-          // scrollSpeed maps one round (60s) to one column width + gap
-          const scrollSpeed = (COL_WIDTH + COL_GAP) / 60; // px per second
-
           return <>
             {/* ── Price display ── */}
             <div className="absolute top-3 left-3 z-30 pointer-events-none">
@@ -277,14 +273,17 @@ function App() {
               const timeLeftMs = Math.max(0, Number(round.expiry_ts) - serverTime);
               const timeLeftS = timeLeftMs / 1000;
 
-              // X position: continuous scroll based on time-to-expiry
-              // timeLeft=0 → at chartRight (price line), timeLeft=60 → one col width to the right
-              const currentX = chartRight + timeLeftS * scrollSpeed;
+              // Price travels THROUGH the block over the full round duration:
+              //   - At round start (timeLeft=roundDuration): price enters block's left edge
+              //   - At round end   (timeLeft=0):             price exits block's right edge
+              const roundDurationS = (round.tf as number) || 300;
+              const scrollSpeed = (COL_WIDTH + COL_GAP) / roundDurationS;
+              const currentX = chartRight + timeLeftS * scrollSpeed - COL_WIDTH;
 
-              // Don't render if off screen to the right
+              // Don't render if block is entirely off-screen to the right
               if (currentX > W) return null;
 
-              const isFirstColumn = timeLeftMs <= 60000 && rounds.indexOf(round) === 0;
+              const isFirstColumn = rounds.indexOf(round) === 0;
               const isClosed = round.status !== 'OPEN';
 
               return sortedColTiles.map((tile, rowIdx) => {
@@ -303,10 +302,10 @@ function App() {
                       "absolute flex flex-col items-center justify-center z-20",
                       "border transition-all duration-500",
                       isActive
-                        ? "bg-primary/15 border-primary shadow-[0_0_20px_rgba(59,130,246,0.4)]"
+                        ? "bg-primary/20 border-primary shadow-[0_0_20px_rgba(59,130,246,0.4)]"
                         : priceInTile && isFirstColumn
-                          ? "bg-primary/10 border-primary/40"
-                          : "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.06] hover:border-white/20",
+                          ? "bg-primary/15 border-primary/60"
+                          : "bg-white/[0.06] border-white/[0.15] hover:bg-white/[0.10] hover:border-white/30",
                       isClosed && "opacity-30"
                     )}
                     style={{
@@ -328,7 +327,7 @@ function App() {
                     </span>
                     {isFirstColumn && (
                       <span className="text-[8px] text-gray-500 font-bold mt-0.5">
-                        {Math.floor(timeLeftS)}s
+                        {Math.floor(timeLeftS / 60)}:{String(Math.floor(timeLeftS % 60)).padStart(2, '0')}
                       </span>
                     )}
                     {isActive && (
@@ -365,7 +364,7 @@ function App() {
                         : "bg-white/[0.01] border-white/[0.05]"
                     )}
                     style={{
-                      left: chartRight,
+                      left: chartRight - COL_WIDTH,
                       top: yTop,
                       width: COL_WIDTH,
                       height: tileH - 2,

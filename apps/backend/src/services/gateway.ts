@@ -40,6 +40,8 @@ export class Gateway {
                 const { instrument, tf } = msg.payload;
                 const channel = `${instrument}:${tf}`;
                 this.subscriptions.get(ws)?.add(channel);
+                // Prices are not tf-specific — subscribe to instrument price feed
+                this.subscriptions.get(ws)?.add(`${instrument}:PRICE`);
                 console.log(`📡 Client subscribed to ${channel}`);
             } else if (msg.type === 'UNSUBSCRIBE') {
                 const { instrument, tf } = msg.payload;
@@ -60,12 +62,12 @@ export class Gateway {
   public start() {
     // Subscribe to internal events and broadcast to relevant channels
     this.eventBus.subscribe('PRICE_UPDATE', (payload) => {
-      const channel = `${payload.instrument}:60`; // Default TF 60 for MVP
-      // Add source count for frontend transparency (Section 5.5)
-      const health = payload.sourceCount || 3; 
-      this.broadcastToChannel(channel, { 
-        type: WsMessageType.PRICE_TICK, 
-        payload: { ...payload, sourceCount: health } 
+      // Prices are instrument-level, not tf-specific
+      const channel = `${payload.instrument}:PRICE`;
+      const health = payload.sourceCount || 3;
+      this.broadcastToChannel(channel, {
+        type: WsMessageType.PRICE_TICK,
+        payload: { ...payload, sourceCount: health }
       });
     });
 

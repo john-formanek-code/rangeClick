@@ -13,12 +13,12 @@ export const api = {
   },
 
   async getRounds(instrument: Instrument): Promise<Round[]> {
-    const res = await fetch(`${BASE_URL}/rounds?instrument=${instrument}`);
+    const res = await fetch(`${BASE_URL}/rounds?instrument=${instrument}&tf=300`);
     return res.json();
   },
 
   async getActiveRounds(instrument: Instrument): Promise<Round[]> {
-    const res = await fetch(`${BASE_URL}/rounds/active?instrument=${instrument}`);
+    const res = await fetch(`${BASE_URL}/rounds/active?instrument=${instrument}&tf=300`);
     return res.json();
   },
 

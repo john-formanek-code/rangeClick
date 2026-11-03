@@ -60,7 +60,7 @@ export class GameLoop {
   private async tick() {
     const now = Date.now();
     const instruments = [Instrument.BTC, Instrument.ETH];
-    const tfs = [TimeFrame.TF_60S];
+    const tfs = [TimeFrame.TF_300S];
 
     for (const inst of instruments) {
       const currentPrice = this.marketService.getCurrentPrice(inst);

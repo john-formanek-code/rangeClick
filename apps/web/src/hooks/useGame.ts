@@ -64,7 +64,7 @@ export function useGame(instrument: Instrument) {
 
     init();
     socketService.connect();
-    socketService.subscribe(instrument, 60);
+    socketService.subscribe(instrument, 300);
 
     const cleanup = socketService.onMessage((msg) => {
       if (msg.type === WsMessageType.PRICE_TICK) {

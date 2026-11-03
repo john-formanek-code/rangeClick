@@ -30,7 +30,7 @@ export class RoundService {
       await this.knex.transaction(async (trx) => {
         const exists = await trx('rounds').where({ id }).forUpdate().first();
         if (!exists) {
-          const cutoffMs = tf === 60 ? 5000 : 3000;
+          const cutoffMs = tf === 300 ? 30000 : tf === 60 ? 5000 : 3000;
           await trx('rounds').insert({
             id,
             instrument,
@@ -70,11 +70,15 @@ export class RoundService {
     return this.knex('oracle_samples').where({ round_id: roundId }).first();
   }
 
-  async getActiveRounds(instrument: Instrument): Promise<Round[]> {
-    return this.knex('rounds')
+  async getActiveRounds(instrument: Instrument, tf?: number): Promise<Round[]> {
+    let query = this.knex('rounds')
       .where({ instrument })
       .whereIn('status', [RoundStatus.OPEN, RoundStatus.CUTOFF])
       .orderBy('expiry_ts', 'asc');
+    if (tf !== undefined) {
+      query = query.where({ tf });
+    }
+    return query;
   }
 
   async lockRound(roundId: string) {
