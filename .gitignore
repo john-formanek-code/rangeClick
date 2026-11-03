@@ -2,6 +2,7 @@ node_modules/
 dist/
 .DS_Store
 .env
+.env.local
 *.log
 *.sqlite3
 apps/backend/dist/
@@ -11,3 +12,9 @@ apps/web/dist/
 apps/web/node_modules/
 packages/*/dist/
 packages/*/node_modules/
+.serena/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
