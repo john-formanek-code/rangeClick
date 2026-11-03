@@ -26,10 +26,12 @@ export class RoundService {
 
     for (const expiry of expiries) {
       const id = this.getRoundId(instrument, tf, expiry);
-      
+      const timeHorizonMs = Math.max(expiry - now, 1);
+
       await this.knex.transaction(async (trx) => {
-        const exists = await trx('rounds').where({ id }).forUpdate().first();
-        if (!exists) {
+        const existing = await trx('rounds').where({ id }).forUpdate().first();
+
+        if (!existing) {
           const cutoffMs = tf === 300 ? 30000 : tf === 60 ? 5000 : 3000;
           await trx('rounds').insert({
             id,
@@ -39,13 +41,38 @@ export class RoundService {
             cutoff_ts: expiry - cutoffMs,
             status: RoundStatus.OPEN
           });
-          
-          const history = marketService.getHistory(instrument);
-          const tiles = this.gridService.generateTilesForPrice(id, instrument, currentPrice, history);
+
+          const history = marketService.getHistoryWithTimestamps(instrument);
+          const tiles = this.gridService.generateTilesForPrice(id, instrument, currentPrice, history, timeHorizonMs);
           await trx('round_tiles').insert(tiles);
-          
+
           console.log(`✨ Created Round: ${id} with ${tiles.length} tiles (Volatility-aware)`);
+          return;
         }
+
+        // Tiles are a snapshot taken at round-creation time, but the live price keeps
+        // moving. Re-center the grid on the current price as long as nobody has bet on
+        // this round yet (once a bet exists, the grid must stay fixed to be fair) and
+        // it hasn't reached cutoff, otherwise long-lived rounds end up with their whole
+        // probability window stranded far from where the price actually ended up.
+        if (existing.status !== RoundStatus.OPEN) return;
+
+        const hasBet = await trx('bets').where({ round_id: id }).first();
+        if (hasBet) return;
+
+        const tiles = await trx('round_tiles').where({ round_id: id }).orderBy('min_price', 'asc');
+        if (tiles.length === 0) return;
+
+        const gridMin = Number(tiles[0].min_price);
+        const gridMax = Number(tiles[tiles.length - 1].max_price);
+        const step = (gridMax - gridMin) / tiles.length;
+        const driftedOutOfRange = currentPrice <= gridMin + step || currentPrice >= gridMax - step;
+        if (!driftedOutOfRange) return;
+
+        const history = marketService.getHistoryWithTimestamps(instrument);
+        const freshTiles = this.gridService.generateTilesForPrice(id, instrument, currentPrice, history, timeHorizonMs);
+        await trx('round_tiles').where({ round_id: id }).del();
+        await trx('round_tiles').insert(freshTiles);
       });
     }
   }

@@ -87,6 +87,10 @@ export class MarketService {
     return (this.priceHistory[instrument] || []).map(h => h.p);
   }
 
+  getHistoryWithTimestamps(instrument: Instrument): { p: number, ts: number }[] {
+    return this.priceHistory[instrument] || [];
+  }
+
   getInterpolatedPrice(instrument: Instrument, targetTs: number): { price: number, decision: string } {
     const history = this.priceHistory[instrument] || [];
     if (history.length < 2) return { price: this.getCurrentPrice(instrument), decision: 'MEDIAN' };

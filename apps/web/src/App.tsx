@@ -219,36 +219,37 @@ function App() {
               </div>
             </div>
 
-            {/* ── Price chart (left 1/3) ── */}
-            <div className="absolute left-0 top-0 pointer-events-none z-10"
-              style={{ width: chartRight, height: H - FOOTER_HEIGHT }}>
-              <div className="w-full h-full pt-16">
-                {priceHistory.length > 1 && orderedTiles.length > 0 && (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={priceHistory}
-                      margin={{ top: CHART_TOP_PAD, right: 0, left: 0, bottom: CHART_BOTTOM_PAD }}>
-                      <defs>
-                        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <YAxis
-                        domain={[gridMin, gridMax]}
-                        tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 9, fontFamily: 'monospace' }}
-                        stroke="rgba(255,255,255,0.06)"
-                        width={YAXIS_WIDTH}
-                      />
-                      <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} hide />
-                      <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={2}
-                        fill="url(#chartGrad)" isAnimationActive={false} />
-                      {price && (
-                        <ReferenceLine y={price} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 3" />
-                      )}
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
+            {/* ── Price chart (left 1/3) ──
+                Positioned at the exact same (gridAreaTop, gridAreaH) coordinates as the
+                betting tiles and the full-width price line below, with zero internal
+                chart margin, so the chart's Y-axis maps 1:1 onto the tile grid. */}
+            <div className="absolute left-0 pointer-events-none z-10"
+              style={{ width: chartRight, top: gridAreaTop, height: gridAreaH }}>
+              {priceHistory.length > 1 && orderedTiles.length > 0 && (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={priceHistory}
+                    margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <YAxis
+                      domain={[gridMin, gridMax]}
+                      tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 9, fontFamily: 'monospace' }}
+                      stroke="rgba(255,255,255,0.06)"
+                      width={YAXIS_WIDTH}
+                    />
+                    <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} hide />
+                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={2}
+                      fill="url(#chartGrad)" isAnimationActive={false} />
+                    {price && (
+                      <ReferenceLine y={price} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 3" />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             {/* ── Current price line spanning full width ── */}

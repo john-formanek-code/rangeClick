@@ -2,10 +2,19 @@ import { Instrument, Tile } from '@rangeclick/types';
 import { v4 as uuidv4 } from 'uuid';
 
 export class GridService {
-  generateTilesForPrice(round_id: string, instrument: Instrument, currentPrice: number, history: number[]): any[] {
-    // 1. Calculate Volatility (Std Dev)
-    const stdDev = this.calculateStdDev(history) || (instrument === Instrument.BTC ? 5 : 0.5);
-    
+  generateTilesForPrice(
+    round_id: string,
+    instrument: Instrument,
+    currentPrice: number,
+    history: { p: number, ts: number }[],
+    timeHorizonMs: number = 300_000
+  ): any[] {
+    // 1. Calculate Volatility (Std Dev), scaled to how far out this round settles.
+    // History only covers the last ~20s of ticks, so measuring stdDev of raw price
+    // levels over that window and using it to price a 5-minute (or longer) round
+    // massively underestimates how far the price can actually move by settlement.
+    const stdDev = this.estimateVolatility(instrument, history, timeHorizonMs);
+
     // 2. Adjust Step based on Volatility (Section 6.2)
     // Higher volatility -> larger tiles
     const step = Math.max(parseFloat((stdDev * 0.6).toFixed(2)), instrument === Instrument.BTC ? 2 : 0.1);
@@ -71,11 +80,35 @@ export class GridService {
     return this.normalCDF(max, mean, stdDev) - this.normalCDF(min, mean, stdDev);
   }
 
-  private calculateStdDev(values: number[]): number {
-    if (values.length < 2) return 0;
-    const mean = values.reduce((a, b) => a + b) / values.length;
-    const squareDiffs = values.map(v => Math.pow(v - mean, 2));
-    const avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / squareDiffs.length;
-    return Math.sqrt(avgSquareDiff);
+  /**
+   * Estimate the stdDev of price movement over `timeHorizonMs`, not just over the
+   * short history window. Random-walk price movement scales with sqrt(time), so we
+   * measure the per-tick return volatility and scale it up to the round's horizon
+   * instead of using the raw (short-window) price level stdDev directly.
+   */
+  private estimateVolatility(instrument: Instrument, history: { p: number, ts: number }[], timeHorizonMs: number): number {
+    // Minimum sane spread over a ~5min horizon, used as a floor and as the fallback
+    // when there isn't enough history yet to estimate real volatility.
+    const floorPerHorizon = instrument === Instrument.BTC ? 15 : 1.5;
+    const floor = floorPerHorizon * Math.sqrt(Math.max(timeHorizonMs, 1) / 300_000);
+
+    if (history.length < 3) return floor;
+
+    const returns: number[] = [];
+    const intervals: number[] = [];
+    for (let i = 1; i < history.length; i++) {
+      returns.push(history[i].p - history[i - 1].p);
+      intervals.push(history[i].ts - history[i - 1].ts);
+    }
+
+    const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((sum, r) => sum + (r - avgReturn) ** 2, 0) / returns.length;
+    const perTickStdDev = Math.sqrt(variance);
+
+    const avgTickMs = Math.max(1, intervals.reduce((a, b) => a + b, 0) / intervals.length);
+    const ticksInHorizon = Math.max(1, timeHorizonMs / avgTickMs);
+    const scaledStdDev = perTickStdDev * Math.sqrt(ticksInHorizon);
+
+    return Math.max(scaledStdDev, floor);
   }
 }
